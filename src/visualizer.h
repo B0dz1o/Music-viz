@@ -2,6 +2,7 @@
 #define VISUALIZER_H
 
 #include <vector>
+#include <memory>
 #include <GL/glew.h>
 #include "shader.h"
 
@@ -15,7 +16,7 @@ public:
     void render();
     
 private:
-    Shader* shader;
+    std::unique_ptr<Shader> shader;
     GLuint VAO, VBO;
     std::vector<float> frequencies;
     int numBars;

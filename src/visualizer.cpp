@@ -3,18 +3,17 @@
 #include <algorithm>
 #include <cmath>
 
-Visualizer::Visualizer() : shader(nullptr), VAO(0), VBO(0), numBars(64) {
+Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64) {
     frequencies.resize(numBars, 0.0f);
 }
 
 Visualizer::~Visualizer() {
-    if (shader) delete shader;
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
 }
 
 void Visualizer::initialize() {
-    shader = new Shader("shaders/vertex.glsl", "shaders/fragment.glsl");
+    shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     setupBuffers();
 }
 
@@ -24,6 +23,9 @@ void Visualizer::setupBuffers() {
     
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    
+    // Allocate buffer for maximum vertices (6 vertices per bar)
+    glBufferData(GL_ARRAY_BUFFER, numBars * 6 * 2 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
     
     // Position attribute
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
@@ -60,31 +62,43 @@ void Visualizer::render() {
     glBindVertexArray(VAO);
     
     float barWidth = 2.0f / numBars;
+    std::vector<float> vertices;
+    vertices.reserve(numBars * 12); // 6 vertices * 2 coordinates per bar
     
+    // Batch all bar geometry into a single buffer
     for (int i = 0; i < numBars; i++) {
         float x = -1.0f + i * barWidth;
         float height = std::min(frequencies[i], 2.0f);
         
-        // Create vertices for a bar
-        float vertices[] = {
-            x, 0.0f,
-            x + barWidth * 0.9f, 0.0f,
-            x + barWidth * 0.9f, height,
-            x, 0.0f,
-            x + barWidth * 0.9f, height,
-            x, height
-        };
+        // Create vertices for a bar (two triangles)
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(x + barWidth * 0.9f);
+        vertices.push_back(0.0f);
+        vertices.push_back(x + barWidth * 0.9f);
+        vertices.push_back(height);
         
-        // Set color based on height
+        vertices.push_back(x);
+        vertices.push_back(0.0f);
+        vertices.push_back(x + barWidth * 0.9f);
+        vertices.push_back(height);
+        vertices.push_back(x);
+        vertices.push_back(height);
+    }
+    
+    // Upload all vertices at once
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
+    
+    // Draw all bars with color variation
+    for (int i = 0; i < numBars; i++) {
+        float height = std::min(frequencies[i], 2.0f);
         float r = 0.2f + height * 0.4f;
         float g = 0.5f + height * 0.3f;
         float b = 0.8f - height * 0.3f;
         shader->setVec3("barColor", r, g, b);
         
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, i * 6, 6);
     }
     
     glBindVertexArray(0);

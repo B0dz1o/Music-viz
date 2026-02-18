@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include <string>
+#include <unordered_map>
 #include <GL/glew.h>
 
 class Shader {
@@ -17,8 +18,11 @@ public:
     void setMat4(const std::string& name, const float* value);
     
 private:
+    std::unordered_map<std::string, GLint> uniformLocations;
+    
     GLuint compileShader(const std::string& source, GLenum type);
     std::string readFile(const std::string& path);
+    GLint getUniformLocation(const std::string& name);
 };
 
 #endif // SHADER_H

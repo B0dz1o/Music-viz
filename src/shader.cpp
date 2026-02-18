@@ -38,15 +38,15 @@ void Shader::use() {
 }
 
 void Shader::setFloat(const std::string& name, float value) {
-    glUniform1f(glGetUniformLocation(programID, name.c_str()), value);
+    glUniform1f(getUniformLocation(name), value);
 }
 
 void Shader::setVec3(const std::string& name, float x, float y, float z) {
-    glUniform3f(glGetUniformLocation(programID, name.c_str()), x, y, z);
+    glUniform3f(getUniformLocation(name), x, y, z);
 }
 
 void Shader::setMat4(const std::string& name, const float* value) {
-    glUniformMatrix4fv(glGetUniformLocation(programID, name.c_str()), 1, GL_FALSE, value);
+    glUniformMatrix4fv(getUniformLocation(name), 1, GL_FALSE, value);
 }
 
 GLuint Shader::compileShader(const std::string& source, GLenum type) {
@@ -77,4 +77,22 @@ std::string Shader::readFile(const std::string& path) {
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
+}
+
+GLint Shader::getUniformLocation(const std::string& name) {
+    // Check if location is already cached
+    auto it = uniformLocations.find(name);
+    if (it != uniformLocations.end()) {
+        return it->second;
+    }
+    
+    // Get location from OpenGL and cache it
+    GLint location = glGetUniformLocation(programID, name.c_str());
+    uniformLocations[name] = location;
+    
+    if (location == -1) {
+        std::cerr << "Warning: uniform '" << name << "' not found in shader" << std::endl;
+    }
+    
+    return location;
 }

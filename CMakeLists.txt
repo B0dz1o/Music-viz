@@ -41,5 +41,13 @@ target_link_libraries(music_viz
     m
 )
 
+# Copy shaders to build directory
+add_custom_command(TARGET music_viz POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:music_viz>/shaders
+    COMMENT "Copying shaders to build directory"
+)
+
 # Install target
 install(TARGETS music_viz DESTINATION bin)
+install(DIRECTORY shaders DESTINATION bin)
