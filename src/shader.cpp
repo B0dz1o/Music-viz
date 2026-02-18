@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
     std::string vertexCode = readFile(vertexPath);
@@ -20,9 +21,11 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
     GLint success;
     glGetProgramiv(programID, GL_LINK_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetProgramInfoLog(programID, 512, nullptr, infoLog);
-        std::cerr << "Shader program linking failed:\n" << infoLog << std::endl;
+        GLint logLength;
+        glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &logLength);
+        std::vector<char> infoLog(logLength);
+        glGetProgramInfoLog(programID, logLength, nullptr, infoLog.data());
+        std::cerr << "Shader program linking failed:\n" << infoLog.data() << std::endl;
     }
     
     glDeleteShader(vertexShader);
@@ -59,9 +62,11 @@ GLuint Shader::compileShader(const std::string& source, GLenum type) {
     GLint success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        char infoLog[512];
-        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        std::cerr << "Shader compilation failed:\n" << infoLog << std::endl;
+        GLint logLength;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+        std::vector<char> infoLog(logLength);
+        glGetShaderInfoLog(shader, logLength, nullptr, infoLog.data());
+        std::cerr << "Shader compilation failed:\n" << infoLog.data() << std::endl;
     }
     
     return shader;
