@@ -190,8 +190,10 @@ int AudioProcessor::audioCallback(const void* inputBuffer, void* outputBuffer,
     
     if (input) {
         std::lock_guard<std::mutex> lock(processor->bufferMutex);
+        // Apply gain to increase microphone sensitivity
+        const float micGain = 5.0f;
         for (unsigned long i = 0; i < framesPerBuffer && i < processor->micBuffer.size(); i++) {
-            processor->micBuffer[i] = input[i];
+            processor->micBuffer[i] = input[i] * micGain;
         }
     }
     

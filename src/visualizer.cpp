@@ -57,8 +57,8 @@ void Visualizer::updateFrequencyData(const std::vector<float>& magnitudes) {
         
         float avg = (count > 0) ? sum / count : 0.0f;
         
-        // Apply logarithmic scaling and smoothing
-        float target = std::log(1.0f + avg * 100.0f) * 0.5f;
+        // Apply logarithmic scaling and smoothing with increased sensitivity
+        float target = std::log(1.0f + avg * 300.0f) * 0.8f;
         frequencies[i] = frequencies[i] * 0.7f + target * 0.3f;
     }
 }
