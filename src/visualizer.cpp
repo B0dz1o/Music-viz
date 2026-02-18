@@ -1,6 +1,7 @@
 #include "visualizer.h"
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 
 Visualizer::Visualizer() : shader(nullptr), VAO(0), VBO(0), numBars(64) {
     frequencies.resize(numBars, 0.0f);
