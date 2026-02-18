@@ -62,9 +62,9 @@ make
 
 ## Visualization Types
 
-Currently, this application provides **one visualization type**:
+This application now provides **four visualization types** that you can switch between using keyboard controls:
 
-### Frequency Bars
+### 1. Frequency Bars (Press '1')
 - **Description**: Real-time animated frequency spectrum bars
 - **Features**:
   - 64 individual frequency bars representing different frequency ranges
@@ -75,10 +75,41 @@ Currently, this application provides **one visualization type**:
 
 The bars animate in real-time, responding to the audio frequency data. Lower frequencies appear on the left, higher frequencies on the right. The height and color of each bar indicates the amplitude at that frequency range.
 
+### 2. Circular Spectrum (Press '2')
+- **Description**: Radial frequency spectrum arranged in a circle
+- **Features**:
+  - 64 frequency bands arranged in a circular pattern
+  - Rainbow color gradient around the circle
+  - Bars extend outward from a central ring
+  - Dynamic brightness based on amplitude
+  - Creates a visually striking mandala-like effect
+
+### 3. Waveform (Press '3')
+- **Description**: Real-time audio waveform display
+- **Features**:
+  - Shows the actual audio signal waveform
+  - Smooth cyan line visualization
+  - 512 sample points for detailed representation
+  - Temporal smoothing for stable display
+  - Classic oscilloscope-style visualization
+
+### 4. Circle Pulse (Press '4')
+- **Description**: Pulsing concentric circles based on frequency bands
+- **Features**:
+  - 4 concentric circles representing different frequency bands
+  - Each circle pulses based on its frequency band amplitude
+  - Color-coded bands: Red (bass), Green (low-mid), Blue (high-mid), Yellow (treble)
+  - Creates a hypnotic pulsing effect
+  - Great for visualizing rhythm and beat
+
 ## Usage
 
-- The application will start and display a window with animated frequency bars
-- The visualization shows frequency spectrum analysis in real-time
+- The application will start and display a window with the default frequency bars visualization
+- **Switch between visualization modes:**
+  - Press `1` for Frequency Bars
+  - Press `2` for Circular Spectrum
+  - Press `3` for Waveform
+  - Press `4` for Circle Pulse
 - Press `ESC` to exit the application
 
 ## Project Structure
@@ -123,10 +154,9 @@ Music-viz/
 - Audio file input (WAV, MP3, etc.)
 - Microphone input support
 - Additional visualization modes:
-  - Circular/radial spectrum
-  - Waveform display
   - 3D visualization
   - Particle effects
+  - Spectrogram display
 - Configurable color schemes
 - Full-screen mode
 - Recording/export functionality

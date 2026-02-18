@@ -19,6 +19,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
+    
+    // Get visualizer from window user pointer
+    Visualizer* visualizer = static_cast<Visualizer*>(glfwGetWindowUserPointer(window));
+    if (visualizer && action == GLFW_PRESS) {
+        if (key == GLFW_KEY_1) {
+            visualizer->setMode(VisualizationMode::FREQUENCY_BARS);
+            std::cout << "Switched to: Frequency Bars" << std::endl;
+        }
+        else if (key == GLFW_KEY_2) {
+            visualizer->setMode(VisualizationMode::CIRCULAR_SPECTRUM);
+            std::cout << "Switched to: Circular Spectrum" << std::endl;
+        }
+        else if (key == GLFW_KEY_3) {
+            visualizer->setMode(VisualizationMode::WAVEFORM);
+            std::cout << "Switched to: Waveform" << std::endl;
+        }
+        else if (key == GLFW_KEY_4) {
+            visualizer->setMode(VisualizationMode::CIRCLE_PULSE);
+            std::cout << "Switched to: Circle Pulse" << std::endl;
+        }
+    }
 }
 
 int main() {
@@ -69,8 +90,16 @@ int main() {
     Visualizer visualizer;
     visualizer.initialize();
     
+    // Set visualizer as user pointer for key callback
+    glfwSetWindowUserPointer(window, &visualizer);
+    
     std::cout << "Music Visualizer Started!" << std::endl;
-    std::cout << "Press ESC to exit" << std::endl;
+    std::cout << "Controls:" << std::endl;
+    std::cout << "  Press 1 - Frequency Bars" << std::endl;
+    std::cout << "  Press 2 - Circular Spectrum" << std::endl;
+    std::cout << "  Press 3 - Waveform" << std::endl;
+    std::cout << "  Press 4 - Circle Pulse" << std::endl;
+    std::cout << "  Press ESC - Exit" << std::endl;
     
     float time = 0.0f;
     
@@ -87,8 +116,9 @@ int main() {
         std::vector<float> magnitudes;
         audioProcessor.performFFT(audioBuffer, magnitudes);
         
-        // Update visualizer
+        // Update visualizer with both frequency and waveform data
         visualizer.updateFrequencyData(magnitudes);
+        visualizer.updateWaveformData(audioBuffer);
         
         // Clear screen
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
