@@ -143,7 +143,7 @@ void Visualizer::renderCircularSpectrum() {
     glBindVertexArray(VAO);
     
     std::vector<float> vertices;
-    vertices.reserve(numBars * 18); // 6 triangles per bar for radial display
+    vertices.reserve(numBars * 12); // 2 triangles per bar, 6 vertices each, 2 floats per vertex
     
     float angleStep = 2.0f * M_PI / numBars;
     float innerRadius = 0.3f;
@@ -264,14 +264,15 @@ void Visualizer::renderCirclePulse() {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
     
-    // Draw each band with different colors
-    std::vector<std::array<float, 3>> colors = {
+    // Color palette for each band
+    static const std::array<std::array<float, 3>, 4> colors = {{
         {1.0f, 0.2f, 0.2f},  // Red
         {0.2f, 1.0f, 0.2f},  // Green
         {0.2f, 0.2f, 1.0f},  // Blue
         {1.0f, 1.0f, 0.2f}   // Yellow
-    };
+    }};
     
+    // Draw each band with different colors
     for (int b = 0; b < bandsCount; b++) {
         float intensity = std::min(bands[b], 1.0f);
         shader->setVec3("barColor", 

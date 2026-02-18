@@ -1,17 +1,24 @@
 #include "audio_processor.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
 AudioProcessor::AudioProcessor(int sampleRate, int bufferSize)
-    : sampleRate(sampleRate), bufferSize(bufferSize) {
+    : sampleRate(sampleRate), bufferSize(bufferSize), stream(nullptr),
+      microphoneActive(false), microphoneInitialized(false) {
     numBins = bufferSize / 2;
+    micBuffer.resize(bufferSize, 0.0f);
 }
 
 AudioProcessor::~AudioProcessor() {
+    stopMicrophone();
+    if (microphoneInitialized) {
+        Pa_Terminate();
+    }
 }
 
 void AudioProcessor::generateSyntheticAudio(std::vector<float>& buffer, float time) {
@@ -99,4 +106,94 @@ void AudioProcessor::fft(std::vector<float>& real, std::vector<float>& imag) {
             }
         }
     }
+}
+
+bool AudioProcessor::initializeMicrophone() {
+    PaError err = Pa_Initialize();
+    if (err != paNoError) {
+        std::cerr << "PortAudio initialization failed: " << Pa_GetErrorText(err) << std::endl;
+        return false;
+    }
+    
+    microphoneInitialized = true;
+    
+    PaStreamParameters inputParameters;
+    inputParameters.device = Pa_GetDefaultInputDevice();
+    
+    if (inputParameters.device == paNoDevice) {
+        std::cerr << "No default input device found" << std::endl;
+        return false;
+    }
+    
+    inputParameters.channelCount = 1; // Mono
+    inputParameters.sampleFormat = paFloat32;
+    inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
+    inputParameters.hostApiSpecificStreamInfo = nullptr;
+    
+    err = Pa_OpenStream(
+        &stream,
+        &inputParameters,
+        nullptr, // No output
+        sampleRate,
+        bufferSize,
+        paClipOff,
+        audioCallback,
+        this
+    );
+    
+    if (err != paNoError) {
+        std::cerr << "Failed to open audio stream: " << Pa_GetErrorText(err) << std::endl;
+        return false;
+    }
+    
+    return true;
+}
+
+bool AudioProcessor::startMicrophone() {
+    if (!stream) {
+        if (!initializeMicrophone()) {
+            return false;
+        }
+    }
+    
+    PaError err = Pa_StartStream(stream);
+    if (err != paNoError) {
+        std::cerr << "Failed to start audio stream: " << Pa_GetErrorText(err) << std::endl;
+        return false;
+    }
+    
+    microphoneActive = true;
+    std::cout << "Microphone activated" << std::endl;
+    return true;
+}
+
+void AudioProcessor::stopMicrophone() {
+    if (stream && microphoneActive) {
+        Pa_StopStream(stream);
+        microphoneActive = false;
+        std::cout << "Microphone deactivated" << std::endl;
+    }
+}
+
+void AudioProcessor::getMicrophoneBuffer(std::vector<float>& buffer) {
+    std::lock_guard<std::mutex> lock(bufferMutex);
+    buffer = micBuffer;
+}
+
+int AudioProcessor::audioCallback(const void* inputBuffer, void* outputBuffer,
+                                  unsigned long framesPerBuffer,
+                                  const PaStreamCallbackTimeInfo* timeInfo,
+                                  PaStreamCallbackFlags statusFlags,
+                                  void* userData) {
+    AudioProcessor* processor = static_cast<AudioProcessor*>(userData);
+    const float* input = static_cast<const float*>(inputBuffer);
+    
+    if (input) {
+        std::lock_guard<std::mutex> lock(processor->bufferMutex);
+        for (unsigned long i = 0; i < framesPerBuffer && i < processor->micBuffer.size(); i++) {
+            processor->micBuffer[i] = input[i];
+        }
+    }
+    
+    return paContinue;
 }

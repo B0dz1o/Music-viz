@@ -5,11 +5,19 @@ A real-time music visualization application built with C++, OpenGL, and GLFW. Th
 ## Features
 
 - Real-time audio frequency visualization
+- **Multiple audio sources:**
+  - Microphone input for live audio visualization
+  - Synthetic audio generation for demo/testing
 - FFT-based frequency analysis
-- Smooth animated frequency bars
+- **Four visualization modes:**
+  - Frequency Bars (equalizer style)
+  - Circular Spectrum (radial display)
+  - Waveform (oscilloscope style)
+  - Circle Pulse (pulsing bands)
+- Smooth animated transitions
 - Color-coded visualization based on amplitude
 - OpenGL 3.3 Core Profile rendering
-- Synthetic audio generation with multiple frequency components
+- Keyboard controls for easy mode switching
 
 ## Prerequisites
 
@@ -20,23 +28,24 @@ To build and run this application, you need:
 - OpenGL 3.3 or higher
 - GLFW3
 - GLEW
+- PortAudio (for microphone input)
 
 ### Installing Dependencies
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt-get update
-sudo apt-get install build-essential cmake libglfw3-dev libglew-dev libgl1-mesa-dev
+sudo apt-get install build-essential cmake libglfw3-dev libglew-dev libgl1-mesa-dev portaudio19-dev
 ```
 
 **Fedora/RHEL:**
 ```bash
-sudo dnf install gcc-c++ cmake glfw-devel glew-devel mesa-libGL-devel
+sudo dnf install gcc-c++ cmake glfw-devel glew-devel mesa-libGL-devel portaudio-devel
 ```
 
 **macOS (with Homebrew):**
 ```bash
-brew install cmake glfw glew
+brew install cmake glfw glew portaudio
 ```
 
 ## Building
@@ -88,7 +97,7 @@ The bars animate in real-time, responding to the audio frequency data. Lower fre
 - **Description**: Real-time audio waveform display
 - **Features**:
   - Shows the actual audio signal waveform
-  - Smooth cyan line visualization
+  - Smooth Cyan line visualization
   - 512 sample points for detailed representation
   - Temporal smoothing for stable display
   - Classic oscilloscope-style visualization
@@ -104,12 +113,15 @@ The bars animate in real-time, responding to the audio frequency data. Lower fre
 
 ## Usage
 
-- The application will start and display a window with the default frequency bars visualization
+- The application will start with synthetic audio and the default frequency bars visualization
 - **Switch between visualization modes:**
   - Press `1` for Frequency Bars
   - Press `2` for Circular Spectrum
   - Press `3` for Waveform
   - Press `4` for Circle Pulse
+- **Toggle audio source:**
+  - Press `M` to switch between Microphone and Synthetic audio
+  - When using microphone mode, make sure you have a working microphone connected
 - Press `ESC` to exit the application
 
 ## Project Structure
@@ -152,7 +164,6 @@ Music-viz/
 ## Future Enhancements
 
 - Audio file input (WAV, MP3, etc.)
-- Microphone input support
 - Additional visualization modes:
   - 3D visualization
   - Particle effects
@@ -160,6 +171,7 @@ Music-viz/
 - Configurable color schemes
 - Full-screen mode
 - Recording/export functionality
+- Audio output device selection
 
 ## License
 
