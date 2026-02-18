@@ -60,6 +60,21 @@ make
 ./music_viz
 ```
 
+## Visualization Types
+
+Currently, this application provides **one visualization type**:
+
+### Frequency Bars
+- **Description**: Real-time animated frequency spectrum bars
+- **Features**:
+  - 64 individual frequency bars representing different frequency ranges
+  - Dynamic color mapping based on amplitude (blue to pink gradient)
+  - Smooth animations with exponential moving average
+  - Logarithmic scaling for better visual distribution
+  - FFT-based frequency analysis
+
+The bars animate in real-time, responding to the audio frequency data. Lower frequencies appear on the left, higher frequencies on the right. The height and color of each bar indicates the amplitude at that frequency range.
+
 ## Usage
 
 - The application will start and display a window with animated frequency bars
@@ -107,7 +122,11 @@ Music-viz/
 
 - Audio file input (WAV, MP3, etc.)
 - Microphone input support
-- Multiple visualization modes
+- Additional visualization modes:
+  - Circular/radial spectrum
+  - Waveform display
+  - 3D visualization
+  - Particle effects
 - Configurable color schemes
 - Full-screen mode
 - Recording/export functionality
