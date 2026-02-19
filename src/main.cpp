@@ -90,6 +90,18 @@ void key_callback_with_audio(GLFWwindow* window, int key, int scancode, int acti
             std::cout << "Audio source: SYNTHETIC" << std::endl;
         }
     }
+    else if (key == GLFW_KEY_U) {
+        audioProcessor->adjustSensitivity(-0.05f); // lower factor -> more sensitive
+    }
+    else if (key == GLFW_KEY_J) {
+        audioProcessor->adjustSensitivity(0.05f); // increase factor -> less sensitive
+    }
+    else if (key == GLFW_KEY_I) {
+        visualizer->adjustPulseScale(0.01f);
+    }
+    else if (key == GLFW_KEY_K) {
+        visualizer->adjustPulseScale(-0.01f);
+    }
 }
 
 int main() {
@@ -127,8 +139,10 @@ int main() {
         return -1;
     }
     
-    // Set viewport
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    // Set viewport using actual framebuffer size (fixes retina / initial centering)
+    int fbw, fbh;
+    glfwGetFramebufferSize(window, &fbw, &fbh);
+    glViewport(0, 0, fbw, fbh);
     
     // Enable blending for transparency
     glEnable(GL_BLEND);
@@ -177,6 +191,12 @@ int main() {
         // Perform FFT
         std::vector<float> magnitudes;
         audioProcessor.performFFT(audioBuffer, magnitudes);
+
+        // Process beat detection (use same timestep as synthetic time step)
+        const float dt = 0.02f;
+        audioProcessor.processBeat(magnitudes, dt);
+        float beatLevel = audioProcessor.getBeatLevel();
+        visualizer.setBeat(beatLevel);
         
         // Update visualizer with both frequency and waveform data
         visualizer.updateFrequencyData(magnitudes);

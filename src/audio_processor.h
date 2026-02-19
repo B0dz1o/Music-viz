@@ -23,6 +23,10 @@ public:
     
     // Perform FFT on audio data
     void performFFT(const std::vector<float>& input, std::vector<float>& magnitudes);
+    // Beat detection (bass energy based)
+    void processBeat(const std::vector<float>& magnitudes, float deltaTime);
+    float getBeatLevel() const { return beatLevel; }
+    float getEstimatedBPM() const { return estimatedBpm; }
     
     // Get frequency bins
     int getNumBins() const { return numBins; }
@@ -48,6 +52,26 @@ private:
                            const PaStreamCallbackTimeInfo* timeInfo,
                            PaStreamCallbackFlags statusFlags,
                            void* userData);
+
+    // Beat detection state
+    float smoothedBassEnergy;
+    float longTermBassAvg;
+    float bassEnergyVariance;
+    float beatLevel;
+    float estimatedBpm;
+    float timeSinceStart;
+    float lastBeatTime;
+    std::vector<float> beatTimestamps;
+    float bpmWindowSeconds;
+    // BPM printing state
+    float lastBpmPrintTime;
+    float lastPrintedBpm;
+    // sensitivity (threshold factor) for beat detection
+    float thresholdFactor;
+
+public:
+    void adjustSensitivity(float delta);
+    float getSensitivity() const { return thresholdFactor; }
 };
 
 #endif // AUDIO_PROCESSOR_H

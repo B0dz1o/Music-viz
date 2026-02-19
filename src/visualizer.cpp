@@ -8,9 +8,11 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64), currentMode(VisualizationMode::FREQUENCY_BARS) {
+Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64), currentMode(VisualizationMode::FREQUENCY_BARS), beatLevel(0.0f) {
     frequencies.resize(numBars, 0.0f);
     waveform.resize(2048, 0.0f);
+    baseInner = 0.32f;
+    pulseScale = 0.08f;
 }
 
 Visualizer::~Visualizer() {
@@ -146,22 +148,32 @@ void Visualizer::renderCircularSpectrum() {
     vertices.reserve(numBars * 12); // 2 triangles per bar, 6 vertices each, 2 floats per vertex
     
     float angleStep = 2.0f * M_PI / numBars;
-    float innerRadius = 0.3f;
+    // Query current viewport to compute aspect ratio so the circle stays round
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    float vw = static_cast<float>(vp[2]);
+    float vh = static_cast<float>(vp[3]);
+    float aspect = (vw > 0.0f) ? (vh / vw) : 1.0f; // height/width
+
+    // Base radius in NDC (relative to [-1,1] range). Use member fields.
+    float innerRadius = baseInner + beatLevel * pulseScale;
+    // Scale X coordinates by aspect so circle remains circular in pixel space
+    float xScale = aspect;
     
     for (int i = 0; i < numBars; i++) {
         float angle = i * angleStep;
         float height = std::min(frequencies[i], 1.0f) * 0.5f;
         float outerRadius = innerRadius + height;
         
-        float x1 = innerRadius * cos(angle);
+        float x1 = innerRadius * cos(angle) * xScale;
         float y1 = innerRadius * sin(angle);
-        float x2 = outerRadius * cos(angle);
+        float x2 = outerRadius * cos(angle) * xScale;
         float y2 = outerRadius * sin(angle);
         
         float nextAngle = (i + 1) * angleStep;
-        float x3 = innerRadius * cos(nextAngle);
+        float x3 = innerRadius * cos(nextAngle) * xScale;
         float y3 = innerRadius * sin(nextAngle);
-        float x4 = outerRadius * cos(nextAngle);
+        float x4 = outerRadius * cos(nextAngle) * xScale;
         float y4 = outerRadius * sin(nextAngle);
         
         // First triangle
@@ -283,4 +295,18 @@ void Visualizer::renderCirclePulse() {
     }
     
     glBindVertexArray(0);
+}
+
+void Visualizer::setBeat(float level) {
+    // clamp
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+    beatLevel = level;
+}
+
+void Visualizer::adjustPulseScale(float delta) {
+    pulseScale += delta;
+    if (pulseScale < 0.01f) pulseScale = 0.01f;
+    if (pulseScale > 0.5f) pulseScale = 0.5f;
+    std::cout << "Pulse scale = " << pulseScale << std::endl;
 }
