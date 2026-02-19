@@ -10,7 +10,17 @@ enum class VisualizationMode {
     FREQUENCY_BARS,    // Original equalizer bars
     CIRCULAR_SPECTRUM, // Circular/radial spectrum
     WAVEFORM,          // Waveform display
-    CIRCLE_PULSE       // Pulsing circles
+    CIRCLE_PULSE,      // Pulsing circles
+    PARTICLE_EFFECTS   // Particle system driven by audio
+};
+
+struct Particle {
+    float x, y;      // position
+    float vx, vy;    // velocity
+    float life;      // remaining lifetime
+    float maxLife;   // initial lifetime
+    float r, g, b;   // color
+    float size;      // point size in pixels
 };
 
 class Visualizer {
@@ -44,6 +54,13 @@ private:
     // pulse control
     float baseInner;
     float pulseScale;
+
+    // particle system
+    static constexpr int maxParticles = 300;
+    std::vector<Particle> particles;
+    GLuint particleVAO, particleVBO;
+    void setupParticleBuffers();
+    void renderParticleEffects();
 };
 
 #endif // VISUALIZER_H

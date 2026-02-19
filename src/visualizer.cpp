@@ -2,27 +2,34 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <ctime>
 #include <array>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64), currentMode(VisualizationMode::FREQUENCY_BARS), beatLevel(0.0f) {
+Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64), currentMode(VisualizationMode::FREQUENCY_BARS), beatLevel(0.0f), particleVAO(0), particleVBO(0) {
     frequencies.resize(numBars, 0.0f);
     waveform.resize(2048, 0.0f);
     baseInner = 0.32f;
     pulseScale = 0.08f;
+    particles.reserve(maxParticles);
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
 }
 
 Visualizer::~Visualizer() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &particleVAO);
+    glDeleteBuffers(1, &particleVBO);
 }
 
 void Visualizer::initialize() {
     shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     setupBuffers();
+    setupParticleBuffers();
 }
 
 void Visualizer::setupBuffers() {
@@ -39,6 +46,22 @@ void Visualizer::setupBuffers() {
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void Visualizer::setupParticleBuffers() {
+    glGenVertexArrays(1, &particleVAO);
+    glGenBuffers(1, &particleVBO);
+
+    glBindVertexArray(particleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
+    // Reserve space for one particle position (updated per draw call)
+    glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -91,6 +114,9 @@ void Visualizer::render() {
             break;
         case VisualizationMode::CIRCLE_PULSE:
             renderCirclePulse();
+            break;
+        case VisualizationMode::PARTICLE_EFFECTS:
+            renderParticleEffects();
             break;
     }
 }
@@ -294,6 +320,94 @@ void Visualizer::renderCirclePulse() {
         glDrawArrays(GL_TRIANGLES, b * segments * 3, segments * 3);
     }
     
+    glBindVertexArray(0);
+}
+
+void Visualizer::renderParticleEffects() {
+    const float dt = 0.02f;   // fixed timestep matching the main render loop
+    const float gravity = -0.4f;
+
+    // Spawn particles driven by frequency bands
+    const int numBands = 8;
+    const int barsPerBand = numBars / numBands;
+
+    for (int b = 0; b < numBands; b++) {
+        float energy = 0.0f;
+        for (int i = 0; i < barsPerBand; i++) {
+            energy += frequencies[b * barsPerBand + i];
+        }
+        energy /= barsPerBand;
+        energy = std::min(energy, 1.5f);
+
+        int numNew = static_cast<int>(energy * 4.0f);
+        for (int n = 0; n < numNew && static_cast<int>(particles.size()) < maxParticles; n++) {
+            Particle p;
+            float bandCenterX = -1.0f + (2.0f * (b + 0.5f)) / numBands;
+            p.x = bandCenterX + (rand() % 201 - 100) / 100.0f * (1.0f / numBands);
+            p.y = -1.0f;
+            p.vx = (rand() % 201 - 100) / 600.0f;
+            p.vy = 0.4f + energy * 0.6f + (rand() % 100) / 400.0f;
+            p.maxLife = 1.2f + energy * 0.8f;
+            p.life = p.maxLife;
+            // Rainbow color per band
+            float hue = static_cast<float>(b) / numBands;
+            p.r = 0.5f + 0.5f * std::cos(hue * 2.0f * M_PI);
+            p.g = 0.5f + 0.5f * std::cos(hue * 2.0f * M_PI + 2.0f * M_PI / 3.0f);
+            p.b = 0.5f + 0.5f * std::cos(hue * 2.0f * M_PI + 4.0f * M_PI / 3.0f);
+            p.size = 3.0f + energy * 5.0f;
+            particles.push_back(p);
+        }
+    }
+
+    // Spawn burst particles on a strong beat
+    if (beatLevel > 0.5f) {
+        int numBurst = static_cast<int>(beatLevel * 8.0f);
+        for (int n = 0; n < numBurst && static_cast<int>(particles.size()) < maxParticles; n++) {
+            Particle p;
+            p.x = (rand() % 201 - 100) / 100.0f * 0.4f;
+            p.y = (rand() % 201 - 100) / 100.0f * 0.4f;
+            float angle = (rand() % 360) * M_PI / 180.0f;
+            float speed = 0.3f + beatLevel * 0.6f;
+            p.vx = std::cos(angle) * speed;
+            p.vy = std::sin(angle) * speed;
+            p.maxLife = 0.8f + beatLevel * 0.4f;
+            p.life = p.maxLife;
+            p.r = 1.0f; p.g = 0.85f; p.b = 0.2f; // bright gold burst
+            p.size = 4.0f + beatLevel * 6.0f;
+            particles.push_back(p);
+        }
+    }
+
+    // Update all particles
+    for (auto& p : particles) {
+        p.vy += gravity * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+    }
+
+    // Remove dead or out-of-bounds particles
+    particles.erase(
+        std::remove_if(particles.begin(), particles.end(), [](const Particle& p) {
+            return p.life <= 0.0f || p.y < -1.1f || p.x < -1.2f || p.x > 1.2f;
+        }),
+        particles.end()
+    );
+
+    // Render each particle as a point
+    glBindVertexArray(particleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
+
+    for (const auto& p : particles) {
+        float alpha = p.life / p.maxLife;
+        float pos[2] = {p.x, p.y};
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(pos), pos);
+        shader->setVec3("barColor", p.r * alpha, p.g * alpha, p.b * alpha);
+        glPointSize(std::max(1.0f, p.size * alpha));
+        glDrawArrays(GL_POINTS, 0, 1);
+    }
+
+    glPointSize(1.0f);
     glBindVertexArray(0);
 }
 
