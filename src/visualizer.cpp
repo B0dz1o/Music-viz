@@ -8,7 +8,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-Visualizer::Visualizer() : VAO(0), VBO(0), numBars(64), currentMode(VisualizationMode::FREQUENCY_BARS), beatLevel(0.0f) {
+Visualizer::Visualizer()
+    : VAO(0), VBO(0), numBars(64),
+      currentMode(VisualizationMode::FREQUENCY_BARS),
+      beatLevel(0.0f), time(0.0f),
+      bassEnergy(0.0f), midEnergy(0.0f), highEnergy(0.0f)
+{
     frequencies.resize(numBars, 0.0f);
     waveform.resize(2048, 0.0f);
     baseInner = 0.32f;
@@ -22,6 +27,8 @@ Visualizer::~Visualizer() {
 
 void Visualizer::initialize() {
     shader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
+    particles = std::make_unique<ParticleSystem>(5000);
+    particles->initialize();
     setupBuffers();
 }
 
@@ -48,11 +55,11 @@ void Visualizer::updateFrequencyData(const std::vector<float>& magnitudes) {
     int step = magnitudes.size() / numBars;
     if (step < 1) step = 1;
     
-    for (int i = 0; i < numBars && i * step < magnitudes.size(); i++) {
+    for (int i = 0; i < numBars && i * step < (int)magnitudes.size(); i++) {
         float sum = 0.0f;
         int count = 0;
         
-        for (int j = 0; j < step && (i * step + j) < magnitudes.size(); j++) {
+        for (int j = 0; j < step && (i * step + j) < (int)magnitudes.size(); j++) {
             sum += magnitudes[i * step + j];
             count++;
         }
@@ -63,6 +70,18 @@ void Visualizer::updateFrequencyData(const std::vector<float>& magnitudes) {
         float target = std::log(1.0f + avg * 300.0f) * 0.8f;
         frequencies[i] = frequencies[i] * 0.7f + target * 0.3f;
     }
+
+    // Compute band energies for the particle system
+    // Bass: bars 0-7, Mid: 8-31, High: 32-63
+    auto bandAvg = [&](int lo, int hi) {
+        float s = 0.0f;
+        int count = 0;
+        for (int i = lo; i <= hi && i < numBars; ++i) { s += frequencies[i]; ++count; }
+        return count > 0 ? s / count : 0.0f;
+    };
+    bassEnergy = std::min(bandAvg(0,  7),  1.0f);
+    midEnergy  = std::min(bandAvg(8,  31), 1.0f);
+    highEnergy = std::min(bandAvg(32, 63), 1.0f);
 }
 
 void Visualizer::updateWaveformData(const std::vector<float>& audioBuffer) {
@@ -76,7 +95,15 @@ void Visualizer::setMode(VisualizationMode mode) {
     currentMode = mode;
 }
 
-void Visualizer::render() {
+void Visualizer::render(float dt) {
+    time += dt;
+
+    if (currentMode == VisualizationMode::PARTICLES) {
+        particles->update(dt, beatLevel, bassEnergy, midEnergy, highEnergy, time);
+        particles->render(beatLevel, bassEnergy, highEnergy, time);
+        return;
+    }
+
     shader->use();
     
     switch (currentMode) {
@@ -91,6 +118,8 @@ void Visualizer::render() {
             break;
         case VisualizationMode::CIRCLE_PULSE:
             renderCirclePulse();
+            break;
+        default:
             break;
     }
 }

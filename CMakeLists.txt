@@ -17,6 +17,7 @@ set(SOURCES
     src/audio_processor.cpp
     src/visualizer.cpp
     src/shader.cpp
+    src/particle_system.cpp
 )
 
 # Header files
@@ -24,6 +25,7 @@ set(HEADERS
     src/audio_processor.h
     src/visualizer.h
     src/shader.h
+    src/particle_system.h
 )
 
 # Create executable
