@@ -2,6 +2,8 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -12,6 +14,19 @@ AudioProcessor::AudioProcessor(int sampleRate, int bufferSize)
       microphoneActive(false), microphoneInitialized(false) {
     numBins = bufferSize / 2;
     micBuffer.resize(bufferSize, 0.0f);
+        // Initialize beat detection state
+        smoothedBassEnergy = 0.0f;
+        longTermBassAvg = 0.0f;
+        bassEnergyVariance = 0.0f;
+        beatLevel = 0.0f;
+        estimatedBpm = 0.0f;
+        timeSinceStart = 0.0f;
+        lastBeatTime = -10.0f;
+        beatTimestamps.clear();
+        bpmWindowSeconds = 5.0f; // average BPM over last 5 seconds
+        lastBpmPrintTime = -10.0f;
+        lastPrintedBpm = 0.0f;
+    thresholdFactor = 0.9f; // default sensitivity (adjusted)
 }
 
 AudioProcessor::~AudioProcessor() {
@@ -60,6 +75,105 @@ void AudioProcessor::performFFT(const std::vector<float>& input, std::vector<flo
     for (int i = 0; i < numBins; i++) {
         magnitudes[i] = std::sqrt(real[i] * real[i] + imag[i] * imag[i]) / bufferSize;
     }
+}
+
+void AudioProcessor::processBeat(const std::vector<float>& magnitudes, float deltaTime) {
+    // Update time
+    timeSinceStart += deltaTime;
+
+    // Compute bass energy up to ~100 Hz (user requested)
+    int maxBin = static_cast<int>(100.0f * bufferSize / sampleRate);
+    if (maxBin < 1) maxBin = 1;
+    if (maxBin >= numBins) maxBin = numBins - 1;
+
+    float bassEnergy = 0.0f;
+    for (int i = 0; i <= maxBin && i < (int)magnitudes.size(); ++i) {
+        bassEnergy += magnitudes[i];
+    }
+
+    // Normalize by number of bins used
+    bassEnergy /= static_cast<float>(maxBin + 1);
+
+    // Short-term smoothing
+    const float alpha = 0.4f; // smoothing for immediate energy
+    smoothedBassEnergy = smoothedBassEnergy * (1.0f - alpha) + bassEnergy * alpha;
+
+    // Long-term average for adaptive threshold
+    const float longAlpha = 0.01f;
+    longTermBassAvg = longTermBassAvg * (1.0f - longAlpha) + bassEnergy * longAlpha;
+
+    // Variance estimate (simple)
+    bassEnergyVariance = bassEnergyVariance * 0.98f + (bassEnergy - longTermBassAvg) * (bassEnergy - longTermBassAvg) * 0.02f;
+
+    // Detect peaks: energy significantly above long-term average
+    // sensitivity: lower = more beats. Use configurable thresholdFactor.
+    float threshold = longTermBassAvg * thresholdFactor + std::sqrt(bassEnergyVariance);
+
+    float minBeatInterval = 0.35f; // seconds (max ~171 bpm)
+
+    bool beatDetected = false;
+    if (smoothedBassEnergy > threshold && (timeSinceStart - lastBeatTime) > minBeatInterval && smoothedBassEnergy > 1e-5f) {
+        // Register beat
+        float interval = (lastBeatTime > 0.0f) ? (timeSinceStart - lastBeatTime) : 0.0f;
+        if (lastBeatTime > 0.0f && interval > 0.05f && interval < 5.0f) {
+            // record beat timestamp
+            beatTimestamps.push_back(timeSinceStart);
+            // drop old timestamps outside the averaging window
+            while (!beatTimestamps.empty() && (timeSinceStart - beatTimestamps.front()) > bpmWindowSeconds) {
+                beatTimestamps.erase(beatTimestamps.begin());
+            }
+
+            // compute average interval from consecutive timestamps within window
+            if (beatTimestamps.size() >= 2) {
+                float sumIntervals = 0.0f;
+                int count = 0;
+                for (size_t i = 1; i < beatTimestamps.size(); ++i) {
+                    float dtInt = beatTimestamps[i] - beatTimestamps[i-1];
+                    if (dtInt > 0.0f && dtInt < 5.0f) {
+                        sumIntervals += dtInt;
+                        ++count;
+                    }
+                }
+                if (count > 0) {
+                    float avgInterval = sumIntervals / static_cast<float>(count);
+                    float newBpm = 60.0f / avgInterval;
+                    // Print BPM if it changed enough or every 2 seconds
+                    if (std::fabs(newBpm - estimatedBpm) > 1.0f || (timeSinceStart - lastBpmPrintTime) > 2.0f) {
+                        estimatedBpm = newBpm;
+                        lastBpmPrintTime = timeSinceStart;
+                        lastPrintedBpm = estimatedBpm;
+                        // Print on the same console line, formatted to 1 decimal place
+                        std::ostringstream oss;
+                        oss << "Estimated BPM: " << std::fixed << std::setprecision(1) << estimatedBpm;
+                        std::string out = oss.str();
+                        // Pad to clear previous longer text
+                        out += std::string(8, ' ');
+                        std::cout << '\r' << out << std::flush;
+                    } else {
+                        estimatedBpm = newBpm;
+                    }
+                }
+            }
+        }
+        lastBeatTime = timeSinceStart;
+        beatDetected = true;
+    }
+
+    // Update beatLevel: boost on detection, decay otherwise
+    if (beatDetected) {
+        beatLevel = 1.0f;
+    } else {
+        // Exponential decay
+        float decay = 0.02f; // per call (depends on call frequency)
+        beatLevel = std::max(0.0f, beatLevel - decay);
+    }
+}
+
+void AudioProcessor::adjustSensitivity(float delta) {
+    thresholdFactor += delta;
+    if (thresholdFactor < 0.2f) thresholdFactor = 0.2f;
+    if (thresholdFactor > 5.0f) thresholdFactor = 5.0f;
+    std::cout << "\nSensitivity (thresholdFactor) = " << thresholdFactor << std::endl;
 }
 
 void AudioProcessor::fft(std::vector<float>& real, std::vector<float>& imag) {

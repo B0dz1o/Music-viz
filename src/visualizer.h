@@ -23,6 +23,8 @@ public:
     void updateWaveformData(const std::vector<float>& audioBuffer);
     void render();
     void setMode(VisualizationMode mode);
+    void setBeat(float level);
+    void adjustPulseScale(float delta);
     VisualizationMode getMode() const { return currentMode; }
     
 private:
@@ -32,12 +34,16 @@ private:
     std::vector<float> waveform;
     int numBars;
     VisualizationMode currentMode;
+    float beatLevel;
     
     void setupBuffers();
     void renderFrequencyBars();
     void renderCircularSpectrum();
     void renderWaveform();
     void renderCirclePulse();
+    // pulse control
+    float baseInner;
+    float pulseScale;
 };
 
 #endif // VISUALIZER_H
