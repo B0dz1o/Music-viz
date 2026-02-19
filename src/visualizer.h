@@ -6,6 +6,13 @@
 #include <GL/glew.h>
 #include "shader.h"
 
+enum class VisualizationMode {
+    FREQUENCY_BARS,    // Original equalizer bars
+    CIRCULAR_SPECTRUM, // Circular/radial spectrum
+    WAVEFORM,          // Waveform display
+    CIRCLE_PULSE       // Pulsing circles
+};
+
 class Visualizer {
 public:
     Visualizer();
@@ -13,15 +20,24 @@ public:
     
     void initialize();
     void updateFrequencyData(const std::vector<float>& magnitudes);
+    void updateWaveformData(const std::vector<float>& audioBuffer);
     void render();
+    void setMode(VisualizationMode mode);
+    VisualizationMode getMode() const { return currentMode; }
     
 private:
     std::unique_ptr<Shader> shader;
     GLuint VAO, VBO;
     std::vector<float> frequencies;
+    std::vector<float> waveform;
     int numBars;
+    VisualizationMode currentMode;
     
     void setupBuffers();
+    void renderFrequencyBars();
+    void renderCircularSpectrum();
+    void renderWaveform();
+    void renderCirclePulse();
 };
 
 #endif // VISUALIZER_H

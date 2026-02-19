@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 
 # Source files
 set(SOURCES
@@ -31,6 +33,7 @@ add_executable(music_viz ${SOURCES} ${HEADERS})
 target_include_directories(music_viz PRIVATE
     ${OPENGL_INCLUDE_DIR}
     ${GLEW_INCLUDE_DIRS}
+    ${PORTAUDIO_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -38,6 +41,7 @@ target_link_libraries(music_viz
     ${OPENGL_LIBRARIES}
     glfw
     GLEW::GLEW
+    ${PORTAUDIO_LIBRARIES}
     m
 )
 

@@ -19,6 +19,77 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
+    
+    // Get visualizer from window user pointer
+    Visualizer* visualizer = static_cast<Visualizer*>(glfwGetWindowUserPointer(window));
+    if (visualizer && action == GLFW_PRESS) {
+        if (key == GLFW_KEY_1) {
+            visualizer->setMode(VisualizationMode::FREQUENCY_BARS);
+            std::cout << "Switched to: Frequency Bars" << std::endl;
+        }
+        else if (key == GLFW_KEY_2) {
+            visualizer->setMode(VisualizationMode::CIRCULAR_SPECTRUM);
+            std::cout << "Switched to: Circular Spectrum" << std::endl;
+        }
+        else if (key == GLFW_KEY_3) {
+            visualizer->setMode(VisualizationMode::WAVEFORM);
+            std::cout << "Switched to: Waveform" << std::endl;
+        }
+        else if (key == GLFW_KEY_4) {
+            visualizer->setMode(VisualizationMode::CIRCLE_PULSE);
+            std::cout << "Switched to: Circle Pulse" << std::endl;
+        }
+    }
+}
+
+// Callback for microphone toggle (stored separately to access audio processor)
+struct AppContext {
+    AudioProcessor* audioProcessor;
+    Visualizer* visualizer;
+    bool useMicrophone;
+};
+
+void key_callback_with_audio(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+    
+    AppContext* context = static_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (!context || action != GLFW_PRESS) return;
+    
+    Visualizer* visualizer = context->visualizer;
+    AudioProcessor* audioProcessor = context->audioProcessor;
+    
+    if (key == GLFW_KEY_1) {
+        visualizer->setMode(VisualizationMode::FREQUENCY_BARS);
+        std::cout << "Switched to: Frequency Bars" << std::endl;
+    }
+    else if (key == GLFW_KEY_2) {
+        visualizer->setMode(VisualizationMode::CIRCULAR_SPECTRUM);
+        std::cout << "Switched to: Circular Spectrum" << std::endl;
+    }
+    else if (key == GLFW_KEY_3) {
+        visualizer->setMode(VisualizationMode::WAVEFORM);
+        std::cout << "Switched to: Waveform" << std::endl;
+    }
+    else if (key == GLFW_KEY_4) {
+        visualizer->setMode(VisualizationMode::CIRCLE_PULSE);
+        std::cout << "Switched to: Circle Pulse" << std::endl;
+    }
+    else if (key == GLFW_KEY_M) {
+        context->useMicrophone = !context->useMicrophone;
+        if (context->useMicrophone) {
+            if (audioProcessor->startMicrophone()) {
+                std::cout << "Audio source: MICROPHONE" << std::endl;
+            } else {
+                std::cout << "Failed to start microphone, using synthetic audio" << std::endl;
+                context->useMicrophone = false;
+            }
+        } else {
+            audioProcessor->stopMicrophone();
+            std::cout << "Audio source: SYNTHETIC" << std::endl;
+        }
+    }
 }
 
 int main() {
@@ -48,7 +119,6 @@ int main() {
     
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetKeyCallback(window, key_callback);
     
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -69,8 +139,25 @@ int main() {
     Visualizer visualizer;
     visualizer.initialize();
     
+    // Set up app context for key callback
+    AppContext appContext;
+    appContext.audioProcessor = &audioProcessor;
+    appContext.visualizer = &visualizer;
+    appContext.useMicrophone = false;
+    
+    glfwSetWindowUserPointer(window, &appContext);
+    glfwSetKeyCallback(window, key_callback_with_audio);
+    
     std::cout << "Music Visualizer Started!" << std::endl;
-    std::cout << "Press ESC to exit" << std::endl;
+    std::cout << "Controls:" << std::endl;
+    std::cout << "  Press 1 - Frequency Bars" << std::endl;
+    std::cout << "  Press 2 - Circular Spectrum" << std::endl;
+    std::cout << "  Press 3 - Waveform" << std::endl;
+    std::cout << "  Press 4 - Circle Pulse" << std::endl;
+    std::cout << "  Press M - Toggle Microphone/Synthetic Audio" << std::endl;
+    std::cout << "  Press ESC - Exit" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Audio source: SYNTHETIC" << std::endl;
     
     float time = 0.0f;
     
@@ -79,16 +166,21 @@ int main() {
         // Process input
         glfwPollEvents();
         
-        // Generate synthetic audio data
+        // Generate or capture audio data
         std::vector<float> audioBuffer;
-        audioProcessor.generateSyntheticAudio(audioBuffer, time);
+        if (appContext.useMicrophone && audioProcessor.isMicrophoneActive()) {
+            audioProcessor.getMicrophoneBuffer(audioBuffer);
+        } else {
+            audioProcessor.generateSyntheticAudio(audioBuffer, time);
+        }
         
         // Perform FFT
         std::vector<float> magnitudes;
         audioProcessor.performFFT(audioBuffer, magnitudes);
         
-        // Update visualizer
+        // Update visualizer with both frequency and waveform data
         visualizer.updateFrequencyData(magnitudes);
+        visualizer.updateWaveformData(audioBuffer);
         
         // Clear screen
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
