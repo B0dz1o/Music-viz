@@ -39,6 +39,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             visualizer->setMode(VisualizationMode::CIRCLE_PULSE);
             std::cout << "Switched to: Circle Pulse" << std::endl;
         }
+        else if (key == GLFW_KEY_5) {
+            visualizer->setMode(VisualizationMode::PARTICLE_EFFECTS);
+            std::cout << "Switched to: Particle Effects" << std::endl;
+        }
     }
 }
 
@@ -75,6 +79,10 @@ void key_callback_with_audio(GLFWwindow* window, int key, int scancode, int acti
     else if (key == GLFW_KEY_4) {
         visualizer->setMode(VisualizationMode::CIRCLE_PULSE);
         std::cout << "Switched to: Circle Pulse" << std::endl;
+    }
+    else if (key == GLFW_KEY_5) {
+        visualizer->setMode(VisualizationMode::PARTICLE_EFFECTS);
+        std::cout << "Switched to: Particle Effects" << std::endl;
     }
     else if (key == GLFW_KEY_M) {
         context->useMicrophone = !context->useMicrophone;
@@ -168,6 +176,7 @@ int main() {
     std::cout << "  Press 2 - Circular Spectrum" << std::endl;
     std::cout << "  Press 3 - Waveform" << std::endl;
     std::cout << "  Press 4 - Circle Pulse" << std::endl;
+    std::cout << "  Press 5 - Particle Effects" << std::endl;
     std::cout << "  Press M - Toggle Microphone/Synthetic Audio" << std::endl;
     std::cout << "  Press ESC - Exit" << std::endl;
     std::cout << std::endl;
